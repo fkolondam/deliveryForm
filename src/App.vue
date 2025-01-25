@@ -163,7 +163,7 @@
             <div 
               class="relative bg-white rounded-lg border border-gray-300"
               :class="{ 'border-red-500': errors.noFaktur }"
-              @click="showFakturPicker = true"
+              @click="openFakturPicker"
             >
               <div class="py-3 px-4 flex justify-between items-center">
                 <span :class="formData.noFaktur ? 'text-gray-900' : 'text-gray-500'">
@@ -238,10 +238,10 @@
                 type="button"
                 @click="formData.pembayaran = method"
                 class="relative py-3 px-4 rounded-lg text-sm font-medium border"
-                :class="[
+                :class="[ 
                   formData.pembayaran === method 
                     ? 'bg-navy-50 border-navy-500 text-navy-700' 
-                    : 'bg-white border-gray-300 text-gray-700'
+                    : 'bg-white border-gray-300 text-gray-700' 
                 ]"
               >
                 {{ method }}
@@ -265,10 +265,10 @@
                 type="button"
                 @click="formData.status = stat"
                 class="relative w-full py-3 px-4 rounded-lg text-sm font-medium border text-left"
-                :class="[
+                :class="[ 
                   formData.status === stat 
                     ? 'bg-navy-50 border-navy-500 text-navy-700' 
-                    : 'bg-white border-gray-300 text-gray-700'
+                    : 'bg-white border-gray-300 text-gray-700' 
                 ]"
               >
                 {{ stat }}
@@ -331,37 +331,6 @@
         </div>
       </div>
     </main>
-
-    <!-- Mobile Pickers -->
-    <!-- Cabang Picker -->
-    <div 
-      v-if="showCabangPicker"
-      class="fixed inset-0 bg-black bg-opacity-50 z-50"
-      @click="showCabangPicker = false"
-    >
-      <div 
-        class="absolute bottom-0 left-0 right-0 bg-white rounded-t-xl p-4"
-        @click.stop
-      >
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-semibold">Pilih Cabang</h3>
-          <button @click="showCabangPicker = false">
-            <X class="w-6 h-6 text-gray-500" />
-          </button>
-        </div>
-        <div class="space-y-2 max-h-[60vh] overflow-y-auto">
-          <button
-            v-for="cabang in branchList"
-            :key="cabang.name"
-            @click="selectCabang(cabang)"
-            class="w-full py-3 px-4 text-left text-sm rounded-lg hover:bg-gray-50"
-            :class="formData.cabang === cabang.name ? 'text-navy-600 font-medium' : 'text-gray-700'"
-          >
-            {{ cabang.name }}
-          </button>
-        </div>
-      </div>
-    </div>
 
     <!-- Date Picker -->
     <div 
@@ -432,198 +401,169 @@
         </div>
       </div>
     </div>
-  </div>
-</template>
-
-<script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useGeolocation } from './composables/useGeolocation'
-import { usePhotoWithMetadata } from './composables/usePhotoWithMetadata'
-import { fetchBranchConfig, fetchInvoiceData, fetchVehicleData, submitForm as submitFormToAPI } from './services/api'
-import { 
-  Send, 
-  ChevronDown, 
-  Camera, 
-  Calendar,
-  ClipboardList,
-  X,
-  CheckCircle2,
-  Search,
-  ArrowLeft,
-  Truck
-} from 'lucide-vue-next'
-import PhotoUpload from './components/PhotoUpload.vue'
-
-const activeTab = ref('form')
-const showCabangPicker = ref(false)
-const showDatePicker = ref(false)
-const showFakturPicker = ref(false)
-const fakturSearch = ref('')
-const errors = ref({})
-
-const branchList = ref([])
-const availablePlates = ref([])
-const fakturList = ref([])
-
-const paymentMethods = ['TUNAI', 'TRANSFER', 'KREDIT']
-const statusList = [
-  'DITERIMA - SEMUA',
-  'DITERIMA - SEBAGIAN',
-  'BATAL - TOKO TUTUP'
-]
-
-const { coords, error: geoError } = useGeolocation()
-const { addWatermark } = usePhotoWithMetadata()
-
-const formData = ref({
-  cabang: '',
-  namaDriver: '',
-  namaHelper: '',
-  noPolisi: '',
-  waktuPengiriman: '',
-  namaToko: '',
-  alamatToko: '',
-  noFaktur: '',
-  nilaiFaktur: '',
-  pembayaran: 'TUNAI',
-  status: 'DITERIMA - SEMUA',
-  checkinPhoto: null,
-  deliveryPhoto: null,
-  paymentPhoto: null
-})
-
-function formatCurrency(amount) {
-  if (typeof amount !== 'number') return '0'
-  return amount.toLocaleString('id-ID')
-}
-
-const filteredFakturList = computed(() => {
-  if (!fakturSearch.value) return fakturList.value || []
-  const search = fakturSearch.value.toLowerCase()
-  return (fakturList.value || []).filter(faktur => {
-    if (!faktur) return false
-    return (
-      (faktur.no || '').toLowerCase().includes(search) ||
-      (faktur.amount?.toString() || '').includes(search) ||
-      (faktur.store?.name || '').toLowerCase().includes(search)
-    )
+  </template>
+  
+  <script setup>
+  import { ref, computed, onMounted } from 'vue'
+  import { useSessionStore } from '../stores/session'
+  import { useGeolocation } from '../composables/useGeolocation'
+  import { submitForm as submitFormToAPI } from '../services/api'
+  import { 
+    Send, 
+    Camera, 
+    Calendar,
+    ClipboardList,
+    X,
+    CheckCircle2,
+    Search,
+    ArrowLeft,
+    Truck
+  } from 'lucide-vue-next'
+  import PhotoUpload from '../components/PhotoUpload.vue'
+  
+  const sessionStore = useSessionStore()
+  const { coords } = useGeolocation()
+  
+  const activeTab = ref('form')
+  const showDatePicker = ref(false)
+  const showFakturPicker = ref(false)
+  const fakturSearch = ref('')
+  const errors = ref({})
+  
+  const paymentMethods = ['TUNAI', 'TRANSFER', 'KREDIT']
+  const statusList = [
+    'DITERIMA - SEMUA',
+    'DITERIMA - SEBAGIAN',
+    'BATAL - TOKO TUTUP'
+  ]
+  
+  const formData = ref({
+    cabang: sessionStore.currentSession?.cabang || '',
+    noPolisi: sessionStore.currentSession?.noPolisi || '',
+    namaDriver: '',
+    namaHelper: '',
+    waktuPengiriman: '',
+    namaToko: '',
+    alamatToko: '',
+    noFaktur: '',
+    nilaiFaktur: '',
+    pembayaran: 'TUNAI',
+    status: 'DITERIMA - SEMUA',
+    checkinPhoto: null,
+    deliveryPhoto: null,
+    paymentPhoto: null
   })
-})
-
-onMounted(async () => {
-  try {
+  
+  const filteredFakturList = computed(() => {
+    if (!fakturSearch.value) return sessionStore.offlineInvoices
+    const search = fakturSearch.value.toLowerCase()
+    return sessionStore.offlineInvoices.filter(faktur => {
+      if (!faktur) return false
+      return (
+        (faktur.no || '').toLowerCase().includes(search) ||
+        (faktur.amount?.toString() || '').includes(search) ||
+        (faktur.store?.name || '').toLowerCase().includes(search)
+      )
+    })
+  })
+  
+  onMounted(() => {
     // Set default datetime
     const now = new Date()
     formData.value.waktuPengiriman = now.toISOString().slice(0, 16)
-    
-    // Fetch initial data
-    const [branchData] = await Promise.all([
-      fetchBranchConfig()
-    ])
-    
-    branchList.value = branchData || []
-
-  } catch (error) {
-    console.error('Error initializing form:', error)
-  }
-})
-
-function formatDateTime(dateString) {
-  const date = new Date(dateString)
-  return date.toLocaleString('id-ID', {
-    dateStyle: 'medium',
-    timeStyle: 'short'
   })
-}
-
-async function selectCabang(branch) {
-  if (!branch) return
-  formData.value.cabang = branch.name || ''
-  // Fetch vehicle data based on the selected branch
-  const vehicleData = await fetchVehicleData(branch.name);
-  availablePlates.value = vehicleData || []
-  formData.value.noPolisi = '' // Reset plate number when branch changes
-  showCabangPicker.value = false
-}
-
-function selectFaktur(faktur) {
-  if (!faktur) return
-  formData.value.noFaktur = faktur.no || ''
-  formData.value.nilaiFaktur = faktur.amount || 0
-  formData.value.namaToko = faktur.store?.name || ''
-  formData.value.alamatToko = faktur.store?.address || ''
-  showFakturPicker.value = false
-}
-
-function validateForm() {
-  errors.value = {}
   
-  // Required fields validation
-  const requiredFields = {
-    cabang: 'Cabang harus dipilih',
-    namaDriver: 'Nama Driver harus diisi',
-    namaHelper: 'Nama Helper harus diisi',
-    noPolisi: 'No Polisi harus dipilih',
-    waktuPengiriman: 'Waktu Pengiriman harus diisi',
-    namaToko: 'Nama Toko harus diisi',
-    alamatToko: 'Alamat Toko harus diisi',
-    nilaiFaktur: 'Nilai Faktur harus diisi',
-    pembayaran: 'Metode Pembayaran harus dipilih',
-    status: 'Status harus dipilih',
-    checkinPhoto: 'Foto Check-in harus diupload',
-    deliveryPhoto: 'Foto Serah Terima Barang harus diupload',
-    paymentPhoto: 'Foto Serah Terima Uang dan Faktur harus diupload'
-  }
-
-  for (const [field, message] of Object.entries(requiredFields)) {
-    if (!formData.value[field]) {
-      errors.value[field] = message
-    }
-  }
-
-  return Object.keys(errors.value).length === 0
-}
-
-async function submitForm() {
-  if (!validateForm()) {
-    activeTab.value = Object.keys(errors.value).some(key => 
-      ['checkinPhoto', 'deliveryPhoto', 'paymentPhoto'].includes(key)
-    ) ? 'attachments' : 'form'
-    return
-  }
-
-  try {
-    const result = await submitFormToAPI({
-      ...formData.value,
-      location: coords.value
+  function formatDateTime(dateString) {
+    const date = new Date(dateString)
+    return date.toLocaleString('id-ID', {
+      dateStyle: 'medium',
+      timeStyle: 'short'
     })
-    
-    if (result.success) {
-      alert('Form berhasil dikirim!')
-      // Reset form
-      formData.value = {
-        cabang: '',
-        namaDriver: '',
-        namaHelper: '',
-        noPolisi: '',
-        waktuPengiriman: new Date().toISOString().slice(0, 16),
-        namaToko: '',
-        alamatToko: '',
-        noFaktur: '',
-        nilaiFaktur: '',
-        pembayaran: 'TUNAI',
-        status: 'DITERIMA - SEMUA',
-        checkinPhoto: null,
-        deliveryPhoto: null,
-        paymentPhoto: null
-      }
-      activeTab.value = 'form'
-    } else {
-      alert('Gagal mengirim form: ' + result.message)
-    }
-  } catch (error) {
-    console.error('Error submitting form:', error)
-    alert('Terjadi kesalahan saat mengirim form')
   }
-}
-</script>
+  
+  function formatCurrency(amount) {
+    if (typeof amount !== 'number') return '0'
+    return amount.toLocaleString('id-ID')
+  }
+  
+  function selectFaktur(faktur) {
+    if (!faktur) return
+    formData.value.noFaktur = faktur.no || ''
+    formData.value.nilaiFaktur = faktur.amount || 0
+    formData.value.namaToko = faktur.store?.name || ''
+    formData.value.alamatToko = faktur.store?.address || ''
+    showFakturPicker.value = false
+  }
+  
+  function validateForm() {
+    errors.value = {}
+    
+    // Required fields validation
+    const requiredFields = {
+      namaDriver: 'Nama Driver harus diisi',
+      namaHelper: 'Nama Helper harus diisi',
+      waktuPengiriman: 'Waktu Pengiriman harus diisi',
+      namaToko: 'Nama Toko harus diisi',
+      alamatToko: 'Alamat Toko harus diisi',
+      nilaiFaktur: 'Nilai Faktur harus diisi',
+      pembayaran: 'Metode Pembayaran harus dipilih',
+      status: 'Status harus dipilih',
+      checkinPhoto: 'Foto Check-in harus diupload',
+      deliveryPhoto: 'Foto Serah Terima Barang harus diupload',
+      paymentPhoto: 'Foto Serah Terima Uang dan Faktur harus diupload'
+    }
+  
+    for (const [field, message] of Object.entries(requiredFields)) {
+      if (!formData.value[field]) {
+        errors.value[field] = message
+      }
+    }
+  
+    return Object.keys(errors.value).length === 0
+  }
+  
+  async function submitForm() {
+    if (!validateForm()) {
+      activeTab.value = Object.keys(errors.value).some(key => 
+        ['checkinPhoto', 'deliveryPhoto', 'paymentPhoto'].includes(key)
+      ) ? 'attachments' : 'form'
+      return
+    }
+  
+    try {
+      const result = await submitFormToAPI({
+        ...formData.value,
+        location: coords.value
+      })
+      
+      if (result.success) {
+        alert('Form berhasil dikirim!')
+        // Reset form
+        formData.value = {
+          cabang: sessionStore.currentSession?.cabang || '',
+          noPolisi: sessionStore.currentSession?.noPolisi || '',
+          namaDriver: '',
+          namaHelper: '',
+          waktuPengiriman: new Date().toISOString().slice(0, 16),
+          namaToko: '',
+          alamatToko: '',
+          noFaktur: '',
+          nilaiFaktur: '',
+          pembayaran: 'TUNAI',
+          status: 'DITERIMA - SEMUA',
+          checkinPhoto: null,
+          deliveryPhoto: null,
+          paymentPhoto: null
+        }
+        activeTab.value = 'form'
+      } else {
+        alert('Gagal mengirim form: ' + result.message)
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error)
+      alert('Terjadi kesalahan saat mengirim form')
+    }
+  }
+  </script>
+</template>
+</read_file>
